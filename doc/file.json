@@ -1,0 +1,17 @@
+{
+  "title": "Data Catalog",
+  "description": "Version 1.0", 
+  "keyword": ["catalog"], 
+  "modified": "2013-05-09",
+  "publisher": "US Department of X",
+  "contactPoint": "John Doe",
+  "mbox": "john.doe@agency.gov",
+  "identifier": "1",
+  "accessLevel": "public",
+  "distribution": [
+      {
+          "accessURL": "http://agency.gov/data.json",
+          "format": "application/json"
+      }
+  ]  
+}
