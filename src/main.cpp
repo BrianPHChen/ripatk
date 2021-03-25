@@ -8,12 +8,12 @@ using json = nlohmann::json;
 using namespace std;
 
 struct Node {
-  string node_public_key;
-//   string ip;
-//   string version;
+    string node_public_key;
+    // string ip_address;
+    // string version;
 //   int uptime;
-//   int inbound_count;
-//   int outbound_count;
+    int inbound_count;
+    int outbound_count;
 //   string rowkey;
 //   string country;
 //   string country_code;
@@ -28,7 +28,14 @@ struct Link {
 };
 
 void from_json(const nlohmann::json& j, Node& n) {
-    j.at("node_public_key").get_to(n.node_public_key);
+    try {
+        j.at("node_public_key").get_to(n.node_public_key);
+        // j.at("ip").get_to(n.ip_address);
+        j.at("inbound_count").get_to(n.inbound_count);
+        j.at("outbound_count").get_to(n.outbound_count);
+    } catch (json::exception& e) {
+        cout << "message: " << e.what() << '\n' << "exception id: " << e.id << endl;
+    }
 }
 
 void from_json(const nlohmann::json& j, Link& l) {
@@ -88,11 +95,23 @@ void BronKerbosch(set<int> R, set<int> P, set<int> X, vector<vector<bool>> &adj,
     }
 }
 
-int main(int argc, char *argv[]){
-    // int indent = 4;
+bool isSymmetric(vector<vector<bool>> &matrix) {
+    for (int idx_row = 0; idx_row < int(matrix.size()); idx_row++) {
+        for (int idx_col = idx_row; idx_col < int(matrix.size()); idx_col++) {
+            if (matrix[idx_row][idx_col] != matrix[idx_col][idx_row]) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
+void readRippleFromFile(
+    vector<Node> &nodes,
+    vector<Link> &links
+) {
     ifstream file;
     json rippleJson;
-    map<string, int> nodeMap;
     file.exceptions (ifstream::failbit | ifstream::badbit );
 
     try {
@@ -102,13 +121,16 @@ int main(int argc, char *argv[]){
     } catch (fstream::failure &e) {
         cerr << "Exception opening/reading/closing file\n";
     }
-
-    vector<Node> nodes = rippleJson.at("nodes").get<vector<Node>>();
-    vector<Link> links = rippleJson.at("links").get<vector<Link>>();
+    nodes = rippleJson.at("nodes").get<vector<Node>>();
+    links = rippleJson.at("links").get<vector<Link>>();
     cout << "nodes number: " << nodes.size() << endl;
     cout << "links number: " << links.size() << endl;
-    cout << "\n";
-    
+}
+
+void mappingPubkeyToId(
+    vector<Node> &nodes,
+    map<string, int> &nodeMap
+) {
     for (int idx = 0; idx < int(nodes.size()); idx++) {
         pair<map<string, int>::iterator, bool> res;
         res = nodeMap.insert(pair<string, int>(nodes[idx].node_public_key, idx));
@@ -117,10 +139,13 @@ int main(int argc, char *argv[]){
             exit(1);
         }
     }
+}
 
-    // adjacency matrix
-    vector< vector<bool> > adj(nodes.size(), vector<bool>(nodes.size(), false));
-
+void adjMatrixCreate(
+    vector<Link> &links,
+    map<string, int> &nodeMap,
+    vector<vector<bool>> &adj
+) {
     for (int idx = 0; idx < int(links.size()); idx++) {
         int srcNodeIdx, trgNodeIdx;
         if (nodeMap.find(links[idx].source) != nodeMap.end() && nodeMap.find(links[idx].target) != nodeMap.end()) {
@@ -133,6 +158,25 @@ int main(int argc, char *argv[]){
         }
         adj[srcNodeIdx][trgNodeIdx] = true;
     }
+    // if (!isSymmetric(adj)) {
+    //     printf("the matrix is not symmetric");
+    //     exit(1);
+    // }
+}
+
+int main(int argc, char *argv[]){
+    vector<Node> nodes;
+    vector<Link> links;
+    // id of pubkey
+    map<string, int> nodeMap;
+    readRippleFromFile(nodes, links);
+    mappingPubkeyToId(nodes, nodeMap);
+
+    // adjacency matrix
+    vector<vector<bool>> adj(nodes.size(), vector<bool>(nodes.size(), false));
+    adjMatrixCreate(links, nodeMap, adj);
+
+    // Run Maximal Cliqiues Algorithm
     unordered_map<int, int> cliquesNum;
     set<int> R, P, X;
     for (int idx = 0; idx < int(nodes.size()); idx++) { 
