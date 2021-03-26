@@ -20,11 +20,19 @@ struct Node {
 //   string latitude;
 //   string longitude;
 //   string timezone;
+
+    // customize field
+    set<int> inCliques;
 };
 
 struct Link {
     string source;
     string target;
+};
+
+struct CliquesInfo {
+    vector<set<int>> id;
+    unordered_map<int, int> number;
 };
 
 void from_json(const nlohmann::json& j, Node& n) {
@@ -59,20 +67,15 @@ set<int> intersection(set<int> set_a, set<int> set_b) {
     return result;
 }
 
-void BronKerbosch(set<int> R, set<int> P, set<int> X, vector<vector<bool>> &adj, unordered_map<int, int> &cliquesNum) {
+void BronKerbosch(set<int> R, set<int> P, set<int> X, vector<vector<bool>> &adj, CliquesInfo& cinfo) {
     
     if (P.size() == 0 && X.size() == 0) {
-        //cout << "maximal size: " << R.size() << endl;
-        if (cliquesNum.find(R.size()) == cliquesNum.end()) {
-            cliquesNum[R.size()] = 1;
+        cinfo.id.push_back(R);
+        if (cinfo.number.find(R.size()) == cinfo.number.end()) {
+            cinfo.number[R.size()] = 1;
         } else {
-            cliquesNum[R.size()]++;
+            cinfo.number[R.size()]++;
         }
-        // cout << "set: { ";
-        // for(auto& e : R) {
-        //     cout << e << " ";
-        // }
-        // cout << "}" << endl;
         return;
     }
 
@@ -87,7 +90,7 @@ void BronKerbosch(set<int> R, set<int> P, set<int> X, vector<vector<bool>> &adj,
     for(int i = 0; i < int(adj.size()); i++) {
         if(P.count(i) && !adj[pivot][i]) {
             R.insert(i);
-            BronKerbosch(R, intersection(P, neighbor(i, adj)), intersection(X, neighbor(i, adj)), adj, cliquesNum);
+            BronKerbosch(R, intersection(P, neighbor(i, adj)), intersection(X, neighbor(i, adj)), adj, cinfo);
             R.erase(i);
             P.erase(i);
             X.insert(i);
@@ -167,6 +170,7 @@ void adjMatrixCreate(
 int main(int argc, char *argv[]){
     vector<Node> nodes;
     vector<Link> links;
+    CliquesInfo cinfo;
     // id of pubkey
     map<string, int> nodeMap;
     readRippleFromFile(nodes, links);
@@ -177,13 +181,12 @@ int main(int argc, char *argv[]){
     adjMatrixCreate(links, nodeMap, adj);
 
     // Run Maximal Cliqiues Algorithm
-    unordered_map<int, int> cliquesNum;
     set<int> R, P, X;
     for (int idx = 0; idx < int(nodes.size()); idx++) { 
         P.insert(idx);
     }
-    BronKerbosch(R, P, X, adj, cliquesNum);
-    for (auto iter = cliquesNum.begin(); iter != cliquesNum.end(); ++iter) {
+    BronKerbosch(R, P, X, adj, cinfo);
+    for (auto iter = cinfo.number.begin(); iter != cinfo.number.end(); ++iter) {
         cout << "There are " << iter->second << " " << iter->first << "-nodes cliques.\n";
     }
     return 0;
