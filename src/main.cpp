@@ -30,8 +30,11 @@ struct Link {
     string target;
 };
 
-struct CliquesInfo {
-    vector<set<int>> id;
+struct NetworkInfo {
+    vector<Node> nodes;
+    vector<Link> links;
+    map<string, int> nodeMap; // id of pubkey
+    vector<set<int>> cliques;
     unordered_map<int, int> number;
 };
 
@@ -67,14 +70,14 @@ set<int> intersection(set<int> set_a, set<int> set_b) {
     return result;
 }
 
-void BronKerbosch(set<int> R, set<int> P, set<int> X, vector<vector<bool>> &adj, CliquesInfo& cinfo) {
+void BronKerbosch(set<int> R, set<int> P, set<int> X, vector<vector<bool>> &adj, NetworkInfo& ninfo) {
     
     if (P.size() == 0 && X.size() == 0) {
-        cinfo.id.push_back(R);
-        if (cinfo.number.find(R.size()) == cinfo.number.end()) {
-            cinfo.number[R.size()] = 1;
+        ninfo.cliques.push_back(R);
+        if (ninfo.number.find(R.size()) == ninfo.number.end()) {
+            ninfo.number[R.size()] = 1;
         } else {
-            cinfo.number[R.size()]++;
+            ninfo.number[R.size()]++;
         }
         return;
     }
@@ -90,7 +93,7 @@ void BronKerbosch(set<int> R, set<int> P, set<int> X, vector<vector<bool>> &adj,
     for(int i = 0; i < int(adj.size()); i++) {
         if(P.count(i) && !adj[pivot][i]) {
             R.insert(i);
-            BronKerbosch(R, intersection(P, neighbor(i, adj)), intersection(X, neighbor(i, adj)), adj, cinfo);
+            BronKerbosch(R, intersection(P, neighbor(i, adj)), intersection(X, neighbor(i, adj)), adj, ninfo);
             R.erase(i);
             P.erase(i);
             X.insert(i);
@@ -168,25 +171,22 @@ void adjMatrixCreate(
 }
 
 int main(int argc, char *argv[]){
-    vector<Node> nodes;
-    vector<Link> links;
-    CliquesInfo cinfo;
-    // id of pubkey
-    map<string, int> nodeMap;
-    readRippleFromFile(nodes, links);
-    mappingPubkeyToId(nodes, nodeMap);
+    NetworkInfo ninfo;
+
+    readRippleFromFile(ninfo.nodes, ninfo.links);
+    mappingPubkeyToId(ninfo.nodes, ninfo.nodeMap);
 
     // adjacency matrix
-    vector<vector<bool>> adj(nodes.size(), vector<bool>(nodes.size(), false));
-    adjMatrixCreate(links, nodeMap, adj);
+    vector<vector<bool>> adj(ninfo.nodes.size(), vector<bool>(ninfo.nodes.size(), false));
+    adjMatrixCreate(ninfo.links, ninfo.nodeMap, adj);
 
     // Run Maximal Cliqiues Algorithm
     set<int> R, P, X;
-    for (int idx = 0; idx < int(nodes.size()); idx++) { 
+    for (int idx = 0; idx < int(ninfo.nodes.size()); idx++) {
         P.insert(idx);
     }
-    BronKerbosch(R, P, X, adj, cinfo);
-    for (auto iter = cinfo.number.begin(); iter != cinfo.number.end(); ++iter) {
+    BronKerbosch(R, P, X, adj, ninfo);
+    for (auto iter = ninfo.number.begin(); iter != ninfo.number.end(); ++iter) {
         cout << "There are " << iter->second << " " << iter->first << "-nodes cliques.\n";
     }
     return 0;
