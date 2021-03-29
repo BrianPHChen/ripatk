@@ -7,6 +7,8 @@
 using json = nlohmann::json;
 using namespace std;
 
+typedef pair<int, int> I2I;
+
 struct Node {
     string node_public_key;
     // string ip_address;
@@ -35,7 +37,8 @@ struct NetworkInfo {
     vector<Link> links;
     map<string, int> nodeMap; // id of pubkey
     vector<set<int>> cliques;
-    unordered_map<int, int> number;
+    unordered_map<int, int> cliquesSizeNumber;
+    vector<I2I> nodesHasCliquesVec;
 };
 
 void from_json(const nlohmann::json& j, Node& n) {
@@ -71,13 +74,21 @@ set<int> intersection(set<int> set_a, set<int> set_b) {
 }
 
 void BronKerbosch(set<int> R, set<int> P, set<int> X, vector<vector<bool>> &adj, NetworkInfo& ninfo) {
-    
     if (P.size() == 0 && X.size() == 0) {
-        ninfo.cliques.push_back(R);
-        if (ninfo.number.find(R.size()) == ninfo.number.end()) {
-            ninfo.number[R.size()] = 1;
+        // cout << "set: { ";
+        // for(auto& e : R) {
+        //     cout << e << " ";
+        // }
+        // cout << "}" << endl;
+        ninfo.cliques.push_back(R); // make each cliques a unique id
+        for (auto& e : R) { // make each node can track its belonged cliques
+            ninfo.nodes[e].inCliques.insert(ninfo.cliques.size()-1);
+        }
+        // statistics the cliques number
+        if (ninfo.cliquesSizeNumber.find(R.size()) == ninfo.cliquesSizeNumber.end()) {
+            ninfo.cliquesSizeNumber[R.size()] = 1;
         } else {
-            ninfo.number[R.size()]++;
+            ninfo.cliquesSizeNumber[R.size()]++;
         }
         return;
     }
@@ -170,6 +181,29 @@ void adjMatrixCreate(
     // }
 }
 
+// a compare operation for pair<int, int>
+struct CmpByValue {
+  bool operator()(const I2I& lhs, const I2I& rhs) {
+    return lhs.second > rhs.second;
+  }
+};
+
+// generate a pair of <node-id, number of belonged cliques>
+// find out a list of influential nodes
+void sortInfluentialNode(
+    NetworkInfo& ninfo
+) {
+    map<int, int> nodeHasCliques;
+    for (int idx = 0; idx < int(ninfo.nodes.size()); idx++) {
+        nodeHasCliques[idx] = ninfo.nodes[idx].inCliques.size();
+    }
+    copy(nodeHasCliques.begin(), nodeHasCliques.end(), back_inserter(ninfo.nodesHasCliquesVec));
+    sort(ninfo.nodesHasCliquesVec.begin(), ninfo.nodesHasCliquesVec.end(), CmpByValue());
+    // for (int idx = 0; idx < 20; idx++) {
+    //     cout << ninfo.nodesHasCliquesVec[idx].first << " belong to " << ninfo.nodesHasCliquesVec[idx].second << " cliques" << endl;
+    // }
+}
+
 int main(int argc, char *argv[]){
     NetworkInfo ninfo;
 
@@ -186,8 +220,13 @@ int main(int argc, char *argv[]){
         P.insert(idx);
     }
     BronKerbosch(R, P, X, adj, ninfo);
-    for (auto iter = ninfo.number.begin(); iter != ninfo.number.end(); ++iter) {
+    for (auto iter = ninfo.cliquesSizeNumber.begin(); iter != ninfo.cliquesSizeNumber.end(); ++iter) {
         cout << "There are " << iter->second << " " << iter->first << "-nodes cliques.\n";
     }
+    cout << "cliques number: ";
+    cout << ninfo.cliques.size() << endl;
+
+    sortInfluentialNode(ninfo);
+
     return 0;
 }
