@@ -215,6 +215,14 @@ void sortInfluentialNode(
 void checkFork(
     NetworkInfo& ninfo
 ) {
+    ofstream csvfile;
+    csvfile.exceptions (ofstream::failbit | ofstream::badbit );
+
+    try {
+        csvfile.open("../doc/fork.csv");
+    } catch (fstream::failure &e) {
+        cerr << "Exception opening/reading/closing file\n";
+    }
     int potentialFork = 0;
     vector<bool> removeNodes(ninfo.nodes.size(), false);
     for(int idx = 0; idx < int(ninfo.nodesHasCliquesVec.size()); idx++) {
@@ -241,10 +249,13 @@ void checkFork(
             }
         }
         cout << node_id << ", " << potentialFork << endl;
+        csvfile << potentialFork << "\n";
         if (idx == 100) {
+            csvfile.close();
             exit(1);
         }
     }
+    csvfile.close();
 }
 
 int main(int argc, char *argv[]){
