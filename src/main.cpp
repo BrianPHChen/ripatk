@@ -41,6 +41,14 @@ struct NetworkInfo {
     vector<I2I> nodesHasCliquesVec;
 };
 
+void printSet(set<int> &s) {
+    cout << "{";
+    for(auto &e: s) {
+        cout << " " << e;
+    }
+    cout << " }\n";
+}
+
 void from_json(const nlohmann::json& j, Node& n) {
     try {
         j.at("node_public_key").get_to(n.node_public_key);
@@ -204,6 +212,41 @@ void sortInfluentialNode(
     // }
 }
 
+void checkFork(
+    NetworkInfo& ninfo
+) {
+    int potentialFork = 0;
+    vector<bool> removeNodes(ninfo.nodes.size(), false);
+    for(int idx = 0; idx < int(ninfo.nodesHasCliquesVec.size()); idx++) {
+        int node_id = ninfo.nodesHasCliquesVec[idx].first;
+        removeNodes[node_id] = true;
+        for(auto iter1 = ninfo.nodes[node_id].inCliques.begin(); iter1 != ninfo.nodes[node_id].inCliques.end(); iter1++) {
+            for(auto iter2 = next(iter1, 1); iter2 != ninfo.nodes[node_id].inCliques.end(); iter2++) {
+                set<int> c1 = ninfo.cliques[*iter1];
+                set<int> c2 = ninfo.cliques[*iter2];
+                int largerSize = (c1.size() > c2.size()) ? c1.size() : c2.size();
+                set<int> intersectionSet = intersection(c1, c2);
+                for (auto iterInterSection = intersectionSet.begin(); iterInterSection != intersectionSet.end(); iterInterSection++) {
+                    if(removeNodes[*iterInterSection]) {
+                        intersectionSet.erase(iterInterSection);
+                    }
+                }
+                if(int(intersectionSet.size()) < largerSize / 5) {
+                    potentialFork++;
+                    // cout << "node: " << node_id << endl;
+                    // printSet(c1);
+                    // printSet(c2);
+                    // exit(1);
+                }
+            }
+        }
+        cout << node_id << ", " << potentialFork << endl;
+        if (idx == 100) {
+            exit(1);
+        }
+    }
+}
+
 int main(int argc, char *argv[]){
     NetworkInfo ninfo;
 
@@ -227,6 +270,6 @@ int main(int argc, char *argv[]){
     cout << ninfo.cliques.size() << endl;
 
     sortInfluentialNode(ninfo);
-
+    checkFork(ninfo);
     return 0;
 }
