@@ -11,7 +11,7 @@ typedef pair<int, int> I2I;
 
 struct Node {
     string node_public_key;
-    // string ip_address;
+    string ip_address;
     // string version;
 //   int uptime;
     int inbound_count;
@@ -52,7 +52,7 @@ void printSet(set<int> &s) {
 void from_json(const nlohmann::json& j, Node& n) {
     try {
         j.at("node_public_key").get_to(n.node_public_key);
-        // j.at("ip").get_to(n.ip_address);
+        j.at("ip").get_to(n.ip_address);
         j.at("inbound_count").get_to(n.inbound_count);
         j.at("outbound_count").get_to(n.outbound_count);
     } catch (json::exception& e) {
@@ -182,6 +182,8 @@ void adjMatrixCreate(
             exit(1);
         }
         adj[srcNodeIdx][trgNodeIdx] = true;
+        // make the adj matrix is symmetric.
+        adj[trgNodeIdx][srcNodeIdx] = true;
     }
     // if (!isSymmetric(adj)) {
     //     printf("the matrix is not symmetric");
