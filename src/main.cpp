@@ -1,5 +1,6 @@
-#include<iostream>
-#include<fstream>
+#include <iostream>
+#include <fstream>
+#include <sstream>
 #include <nlohmann/json.hpp>
 #include <set>
 
@@ -39,6 +40,11 @@ struct NetworkInfo {
     vector<set<int>> cliques;
     unordered_map<int, int> cliquesSizeNumber;
     vector<I2I> nodesHasCliquesVec;
+};
+
+struct ASNInfo {
+    string asn;
+    set<int> nodes;
 };
 
 void printSet(set<int> &s) {
@@ -281,6 +287,60 @@ void checkFork(
     csvfile.close();
 }
 
+void updateNodesInfluentialSequenceBy(
+    vector<ASNInfo>& asninfo
+) {
+    ifstream csvfile;
+    csvfile.exceptions (ifstream::failbit | ifstream::badbit );
+    try {
+        csvfile.open("../doc/sortedNewNodes.csv");
+    } catch (fstream::failure &e) {
+        cerr << "Exception opening/reading/closing file\n";
+    }
+
+    string line;
+    getline( csvfile, line);
+    try {
+        while (getline( csvfile, line)) {
+            istringstream templine(line);
+            string id_str, ip, cliques, asn;
+            getline( templine, id_str, ',');
+            getline( templine, ip, ',');
+            getline( templine, cliques, ',');
+            getline( templine, asn);
+            int id = stoi(id_str);
+            // Because there is a CR(13) in the end of line
+            // Debug very long time...
+            asn = asn.substr(0, asn.length()-1);
+            ASNInfo tmpASNInfo;
+            tmpASNInfo.asn = "anonymous";
+            set<int> tmpSet = {id};
+            tmpASNInfo.nodes = tmpSet;
+
+            if (asn.substr() == "anonymous") {
+                asninfo.push_back(tmpASNInfo);
+                continue;
+            } 
+            if (asninfo.size() > 0 && asninfo.back().asn == asn) {
+                asninfo.back().nodes.insert(id);
+            } else {
+                tmpASNInfo.asn = asn;
+                asninfo.push_back(tmpASNInfo);
+            }
+        }
+    } catch (fstream::failure &e) {
+        if ( csvfile.eof() ) {
+            ;
+        } else {
+            cerr << e.what() << endl;
+        }
+    }
+    csvfile.close();
+    for (int i =0; i <10; i++) {
+        cout << asninfo[i].asn << ", "<< asninfo[i].nodes.size() << endl;
+    }
+}
+
 int main(int argc, char *argv[]){
     NetworkInfo ninfo;
 
@@ -303,8 +363,11 @@ int main(int argc, char *argv[]){
     cout << "cliques number: ";
     cout << ninfo.cliques.size() << endl;
 
-    sortInfluentialNode(ninfo);
-    outputNodeInfo(ninfo);
+    // sortInfluentialNode(ninfo);
+    // outputNodeInfo(ninfo);
     // checkFork(ninfo);
+
+    vector<ASNInfo> asninfo;
+    updateNodesInfluentialSequenceBy(asninfo);
     return 0;
 }
