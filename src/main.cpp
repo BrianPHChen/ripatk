@@ -214,6 +214,27 @@ void sortInfluentialNode(
     // }
 }
 
+void outputNodeInfo(
+    NetworkInfo& ninfo
+) {
+    ofstream csvfile;
+    csvfile.exceptions (ofstream::failbit | ofstream::badbit );
+    try {
+        csvfile.open("../doc/nodes.csv");
+    } catch (fstream::failure &e) {
+        cerr << "Exception opening/reading/closing file\n";
+    }
+    csvfile << "id,ip_address,hasCliques\n";
+
+    for(int idx = 0; idx < int(ninfo.nodesHasCliquesVec.size()); idx++) {
+        int node_id = ninfo.nodesHasCliquesVec[idx].first;
+        string ip_address = (ninfo.nodes[node_id].ip_address.substr(0, 7) == "::ffff:") ? 
+            ninfo.nodes[node_id].ip_address.substr(7) : ninfo.nodes[node_id].ip_address;
+        csvfile << node_id << "," << ip_address << "," << ninfo.nodesHasCliquesVec[idx].second << "\n";
+    }
+    csvfile.close();
+}
+
 void checkFork(
     NetworkInfo& ninfo
 ) {
@@ -283,6 +304,7 @@ int main(int argc, char *argv[]){
     cout << ninfo.cliques.size() << endl;
 
     sortInfluentialNode(ninfo);
-    checkFork(ninfo);
+    outputNodeInfo(ninfo);
+    // checkFork(ninfo);
     return 0;
 }
